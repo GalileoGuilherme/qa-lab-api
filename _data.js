@@ -1,10 +1,5 @@
-// In-memory mock data store for Serverless API routes
 import fs from "fs";
 import path from "path";
-
-const USERS_FILE = process.env.VERCEL
-  ? path.join("/tmp", "registered_users.json")
-  : path.join(process.cwd(), "registered_users.json");
 
 export const initialProducts = [
   {
@@ -87,36 +82,81 @@ export const DEFAULT_USERS = [
   }
 ];
 
-export function getPersistentUsers() {
-  try {
-    if (fs.existsSync(USERS_FILE)) {
-      const data = fs.readFileSync(USERS_FILE, "utf-8");
-      const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+export const initialCart = [
+  {
+    id: "fone-bluetooth",
+    productId: "fone-bluetooth",
+    name: "Fone Bluetooth",
+    price: 199.9,
+    quantity: 1,
+    subtotal: 199.9
+  }
+];
+
+export const initialOrders = [
+  {
+    id: "ORD-948210",
+    createdAt: "2026-10-25T14:30:00Z",
+    status: "CONFIRMED",
+    customerName: "Galileo Guilherme (QA Demo)",
+    customerEmail: "qa@exemplo.com",
+    address: "Rua dos Testes, 123 - Recife, PE",
+    shippingMethod: "Padrão grátis",
+    shippingPrice: 0.0,
+    discount: 0.0,
+    total: 199.9,
+    items: [
+      {
+        id: "fone-bluetooth",
+        name: "Fone Bluetooth",
+        price: 199.9,
+        quantity: 1,
+        subtotal: 199.9
       }
+    ]
+  }
+];
+
+// Diretório base para arquivos persistentes
+const BASE_DATA_DIR = process.env.VERCEL
+  ? path.join("/tmp")
+  : process.cwd();
+
+const USERS_FILE = path.join(BASE_DATA_DIR, "registered_users.json");
+const PRODUCTS_FILE = path.join(BASE_DATA_DIR, "products.json");
+const ORDERS_FILE = path.join(BASE_DATA_DIR, "orders.json");
+const PROFILE_FILE = path.join(BASE_DATA_DIR, "user_profile.json");
+
+// ── Utilitários de Persistência ──────────────────────────────
+function safeReadFile(filePath, fallback) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, "utf-8");
+      const parsed = JSON.parse(data);
+      if (parsed) return parsed;
     }
   } catch (err) {
-    console.warn("Could not read users file, using default users:", err.message);
+    console.warn(`[DataStore] Falha ao ler ${path.basename(filePath)}:`, err.message);
   }
-  return [...DEFAULT_USERS];
+  return fallback;
+}
+
+function safeWriteFile(filePath, data) {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.warn(`[DataStore] Falha ao gravar ${path.basename(filePath)}:`, err.message);
+  }
+}
+
+// ── 1. Usuários Registrados (registered_users.json) ───────────
+export function getPersistentUsers() {
+  const users = safeReadFile(USERS_FILE, DEFAULT_USERS);
+  return Array.isArray(users) && users.length > 0 ? users : [...DEFAULT_USERS];
 }
 
 export function savePersistentUsers(users) {
-  try {
-    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("Could not write users file:", err.message);
-  }
-}
-
-// Inicializa arquivo em disco caso ainda não exista
-try {
-  if (!fs.existsSync(USERS_FILE)) {
-    savePersistentUsers(DEFAULT_USERS);
-  }
-} catch {
-  // Ignora se o ambiente for estritamente read-only
+  safeWriteFile(USERS_FILE, users);
 }
 
 export function registerUser(newUser) {
@@ -161,55 +201,70 @@ export function updateUserPassword(email, newPassword) {
   return false;
 }
 
-export const initialCart = [
-  {
-    id: "fone-bluetooth",
-    productId: "fone-bluetooth",
-    name: "Fone Bluetooth",
-    price: 199.9,
-    quantity: 1,
-    subtotal: 199.9
-  }
-];
+// ── 2. Produtos do Catálogo (products.json) ──────────────────
+export function getPersistentProducts() {
+  const prods = safeReadFile(PRODUCTS_FILE, initialProducts);
+  return Array.isArray(prods) && prods.length > 0 ? prods : [...initialProducts];
+}
 
-export const initialOrders = [
-  {
-    id: "ORD-948210",
-    createdAt: "2026-10-25T14:30:00Z",
-    status: "CONFIRMED",
-    customerName: "Galileo Guilherme (QA Demo)",
-    customerEmail: "qa@exemplo.com",
-    address: "Rua dos Testes, 123 - Recife, PE",
-    shippingMethod: "Padrão grátis",
-    shippingPrice: 0.0,
-    discount: 0.0,
-    total: 199.9,
-    items: [
-      {
-        id: "fone-bluetooth",
-        name: "Fone Bluetooth",
-        price: 199.9,
-        quantity: 1,
-        subtotal: 199.9
-      }
-    ]
-  }
-];
+export function savePersistentProducts(products) {
+  safeWriteFile(PRODUCTS_FILE, products);
+}
 
-// In-memory runtime state
+// ── 3. Histórico de Pedidos (orders.json) ────────────────────
+export function getPersistentOrders() {
+  const ords = safeReadFile(ORDERS_FILE, initialOrders);
+  return Array.isArray(ords) && ords.length > 0 ? ords : [...initialOrders];
+}
+
+export function savePersistentOrders(orders) {
+  safeWriteFile(ORDERS_FILE, orders);
+}
+
+// ── 4. Perfil do Usuário Ativo (user_profile.json) ───────────
+export function getPersistentProfile() {
+  const prof = safeReadFile(PROFILE_FILE, initialUser);
+  return prof && prof.email ? prof : { ...initialUser };
+}
+
+export function savePersistentProfile(user) {
+  safeWriteFile(PROFILE_FILE, user);
+}
+
+// ── Inicialização dos arquivos caso não existam ──────────────
+try {
+  if (!fs.existsSync(USERS_FILE)) safeWriteFile(USERS_FILE, DEFAULT_USERS);
+  if (!fs.existsSync(PRODUCTS_FILE)) safeWriteFile(PRODUCTS_FILE, initialProducts);
+  if (!fs.existsSync(ORDERS_FILE)) safeWriteFile(ORDERS_FILE, initialOrders);
+  if (!fs.existsSync(PROFILE_FILE)) safeWriteFile(PROFILE_FILE, initialUser);
+} catch {
+  // Ignora caso o ambiente seja estritamente somente-leitura
+}
+
+// In-memory runtime state integrado com persistência
 globalThis._qaStore = globalThis._qaStore || {
   registeredUsers: getPersistentUsers(),
-  products: [...initialProducts],
-  user: { ...initialUser },
+  products: getPersistentProducts(),
+  user: getPersistentProfile(),
   cart: [...initialCart],
-  orders: [...initialOrders]
+  orders: getPersistentOrders()
 };
 
 export const getStore = () => {
-  if (!globalThis._qaStore.registeredUsers || globalThis._qaStore.registeredUsers.length === 0) {
-    globalThis._qaStore.registeredUsers = getPersistentUsers();
+  const store = globalThis._qaStore;
+  if (!store.registeredUsers || store.registeredUsers.length === 0) {
+    store.registeredUsers = getPersistentUsers();
   }
-  return globalThis._qaStore;
+  if (!store.products || store.products.length === 0) {
+    store.products = getPersistentProducts();
+  }
+  if (!store.orders || store.orders.length === 0) {
+    store.orders = getPersistentOrders();
+  }
+  if (!store.user || !store.user.email) {
+    store.user = getPersistentProfile();
+  }
+  return store;
 };
 
 export const parseBody = (req) => {

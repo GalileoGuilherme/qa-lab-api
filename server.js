@@ -12,7 +12,7 @@
 import express from "express";
 import cors from "cors";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { getStore, registerUser, findUserByCredentials, updateUserPassword, getPersistentUsers } from "./_data.js";
+import { getStore, registerUser, findUserByCredentials, updateUserPassword, getPersistentUsers, savePersistentUsers, savePersistentProducts, savePersistentOrders, savePersistentProfile } from "./_data.js";
 
 const app = express();
 
@@ -282,6 +282,7 @@ app.put("/users/me", (req, res) => {
     ...updates,
     updatedAt: new Date().toISOString()
   };
+  savePersistentProfile(store.user);
 
   return res.status(200).json({
     success: true,
@@ -373,10 +374,15 @@ app.post("/users", (req, res) => {
   const createdUser = {
     id: `user-${Date.now()}`,
     name,
-    email,
+    email: email.toLowerCase().trim(),
     role: role || "QA Tester",
     createdAt: new Date().toISOString()
   };
+
+  const users = getPersistentUsers();
+  users.push(createdUser);
+  savePersistentUsers(users);
+  store.registeredUsers = users;
 
   return res.status(201).json({
     success: true,
@@ -455,6 +461,7 @@ app.put("/products/:id", (req, res) => {
     id, // Preserva o ID original
     updatedAt: new Date().toISOString()
   };
+  savePersistentProducts(store.products);
 
   return res.status(200).json({
     success: true,
@@ -476,6 +483,7 @@ app.delete("/products/:id", (req, res) => {
   }
 
   const [removed] = store.products.splice(index, 1);
+  savePersistentProducts(store.products);
   return res.status(200).json({
     success: true,
     message: `Produto "${removed.name}" (id: ${id}) excluído com sucesso.`
@@ -521,6 +529,7 @@ app.post("/products", (req, res) => {
   };
 
   store.products.push(newProduct);
+  savePersistentProducts(store.products);
 
   return res.status(201).json({
     success: true,
@@ -813,6 +822,7 @@ app.post("/orders", (req, res) => {
   };
 
   store.orders.unshift(newOrder);
+  savePersistentOrders(store.orders);
   store.cart = []; // Esvazia o carrinho após fechar pedido
 
   return res.status(201).json({
@@ -845,6 +855,7 @@ app.patch("/orders/:id/status", (req, res) => {
 
   order.status = status.toUpperCase();
   order.updatedAt = new Date().toISOString();
+  savePersistentOrders(store.orders);
 
   return res.status(200).json({
     success: true,
@@ -868,6 +879,7 @@ app.delete("/orders/:id", (req, res) => {
   const [removed] = store.orders.splice(index, 1);
   removed.status = "CANCELLED";
   removed.cancelledAt = new Date().toISOString();
+  savePersistentOrders(store.orders);
 
   return res.status(200).json({
     success: true,

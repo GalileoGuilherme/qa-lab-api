@@ -1,0 +1,59 @@
+[
+  {
+    "id": "fone-bluetooth",
+    "name": "Fone Bluetooth",
+    "price": 199.9,
+    "category": "Eletrônicos",
+    "description": "Som imersivo e bateria para o dia todo.",
+    "stock": 15,
+    "rating": 4.8,
+    "badge": "Mais vendido"
+  },
+  {
+    "id": "teclado-mecanico",
+    "name": "Teclado Mecânico",
+    "price": 299.9,
+    "category": "Eletrônicos",
+    "description": "Teclas precisas para trabalho e jogos.",
+    "stock": 8,
+    "rating": 4.9,
+    "badge": "Oferta"
+  },
+  {
+    "id": "garrafa-termica",
+    "name": "Garrafa Térmica",
+    "price": 79.9,
+    "category": "Casa",
+    "description": "Bebida na temperatura ideal por horas.",
+    "stock": 25,
+    "rating": 4.7,
+    "badge": "Novo"
+  },
+  {
+    "id": "mochila-urbana",
+    "name": "Mochila Urbana",
+    "price": 159.9,
+    "category": "Acessórios",
+    "description": "Espaço e conforto para sua rotina.",
+    "stock": 12,
+    "rating": 4.6
+  },
+  {
+    "id": "lampada-inteligente",
+    "name": "Lâmpada Inteligente",
+    "price": 69.9,
+    "category": "Casa",
+    "description": "Iluminação conectada e personalizável.",
+    "stock": 30,
+    "rating": 4.5
+  },
+  {
+    "id": "suporte-notebook",
+    "name": "Suporte para Notebook",
+    "price": 89.9,
+    "category": "Acessórios",
+    "description": "Mais ergonomia para sua estação.",
+    "stock": 20,
+    "rating": 4.7
+  }
+]

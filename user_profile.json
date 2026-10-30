@@ -1,0 +1,9 @@
+{
+  "id": "user-qa-01",
+  "name": "Galileo Guilherme (QA Demo)",
+  "email": "qa@exemplo.com",
+  "role": "QA Engineer / Specialist",
+  "address": "Rua dos Testes, 123 - Recife, PE",
+  "phone": "(81) 99143-2221",
+  "createdAt": "2026-01-15T08:00:00Z"
+}

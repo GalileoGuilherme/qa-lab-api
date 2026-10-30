@@ -1,0 +1,23 @@
+[
+  {
+    "id": "ORD-948210",
+    "createdAt": "2026-10-25T14:30:00Z",
+    "status": "CONFIRMED",
+    "customerName": "Galileo Guilherme (QA Demo)",
+    "customerEmail": "qa@exemplo.com",
+    "address": "Rua dos Testes, 123 - Recife, PE",
+    "shippingMethod": "Padrão grátis",
+    "shippingPrice": 0,
+    "discount": 0,
+    "total": 199.9,
+    "items": [
+      {
+        "id": "fone-bluetooth",
+        "name": "Fone Bluetooth",
+        "price": 199.9,
+        "quantity": 1,
+        "subtotal": 199.9
+      }
+    ]
+  }
+]
