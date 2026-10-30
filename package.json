@@ -1,0 +1,12 @@
+{
+  "name": "qa-lab-api",
+  "version": "1.0.0",
+  "description": "API Mockada para Laboratório de QA",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
