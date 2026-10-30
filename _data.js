@@ -107,6 +107,15 @@ export const initialOrders = [
 
 // In-memory runtime state
 globalThis._qaStore = globalThis._qaStore || {
+  registeredUsers: [
+    {
+      id: "user-qa-01",
+      name: "Galileo Guilherme (QA Demo)",
+      email: "qa@exemplo.com",
+      password: "123456",
+      role: "QA Engineer"
+    }
+  ],
   products: [...initialProducts],
   user: { ...initialUser },
   cart: [...initialCart],

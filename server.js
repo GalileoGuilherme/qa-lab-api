@@ -151,21 +151,34 @@ app.post("/auth/login", (req, res) => {
     });
   }
 
-  const isValidUser =
-    email.toLowerCase().trim() === "qa@exemplo.com" &&
-    (password === "123456" || password === "LabQA!Run-7kV2pX9m");
+  const normalizedEmail = email.toLowerCase().trim();
+  const store = getStore();
+  store.registeredUsers = store.registeredUsers || [];
 
-  if (!isValidUser) {
+  let foundUser = store.registeredUsers.find(
+    (u) => u.email.toLowerCase().trim() === normalizedEmail && u.password === password
+  );
+
+  if (!foundUser && normalizedEmail === "qa@exemplo.com" && (password === "123456" || password === "LabQA!Run-7kV2pX9m")) {
+    foundUser = {
+      id: "user-qa-01",
+      email: "qa@exemplo.com",
+      name: "Galileo Guilherme (QA Demo)",
+      role: "QA Engineer"
+    };
+  }
+
+  if (!foundUser) {
     return res.status(401).json({
       success: false,
-      error: "Credenciais inválidas. Utilize qa@exemplo.com e 123456."
+      error: "Credenciais inválidas. Utilize as credenciais cadastradas ou qa@exemplo.com e 123456."
     });
   }
 
   const tokenPayload = {
-    sub: "user-qa-01",
-    email: "qa@exemplo.com",
-    role: "QA Engineer"
+    sub: foundUser.id,
+    email: foundUser.email,
+    role: foundUser.role || "QA Engineer"
   };
   const token = `mock-jwt-token.${Buffer.from(JSON.stringify(tokenPayload)).toString("base64")}.${Date.now()}`;
 
@@ -174,10 +187,10 @@ app.post("/auth/login", (req, res) => {
     message: "Autenticação realizada com sucesso.",
     token,
     user: {
-      id: "user-qa-01",
-      email: "qa@exemplo.com",
-      name: "Galileo Guilherme (QA Demo)",
-      role: "QA Engineer"
+      id: foundUser.id,
+      email: foundUser.email,
+      name: foundUser.name,
+      role: foundUser.role || "QA Engineer"
     }
   });
 });
@@ -192,18 +205,38 @@ app.post("/auth/register", (req, res) => {
     });
   }
 
+  const normalizedEmail = email.toLowerCase().trim();
+  const store = getStore();
+  store.registeredUsers = store.registeredUsers || [];
+
+  if (store.registeredUsers.some((u) => u.email.toLowerCase().trim() === normalizedEmail) || normalizedEmail === "qa@exemplo.com") {
+    return res.status(409).json({
+      success: false,
+      error: "Já existe um usuário de teste cadastrado com este e-mail."
+    });
+  }
+
   const newUser = {
     id: `user-${Date.now()}`,
     name,
-    email,
+    email: normalizedEmail,
+    password,
     role: "Tester / Student",
     createdAt: new Date().toISOString()
   };
 
+  store.registeredUsers.push(newUser);
+
   return res.status(201).json({
     success: true,
     message: "Usuário registrado com sucesso.",
-    user: newUser
+    user: {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+      createdAt: newUser.createdAt
+    }
   });
 });
 
