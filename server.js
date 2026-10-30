@@ -11,7 +11,7 @@
 
 import express from "express";
 import cors from "cors";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { getStore } from "./_data.js";
 
 const app = express();
@@ -51,6 +51,15 @@ const globalLimiter = rateLimit({
   standardHeaders: true, // Retorna os cabeçalhos RateLimit-* (RFC)
   legacyHeaders: false, // Desativa cabeçalhos X-RateLimit-* obsoletos
   statusCode: 429,
+  keyGenerator: (req) => {
+    // Extrai o IP real do cliente mesmo através de múltiplos proxies (Cloudflare + Render)
+    const clientIp =
+      req.headers["cf-connecting-ip"] ||
+      (typeof req.headers["x-forwarded-for"] === "string"
+        ? req.headers["x-forwarded-for"].split(",")[0].trim()
+        : req.ip);
+    return ipKeyGenerator(clientIp);
+  },
   message: {
     status: 429,
     error: "Too Many Requests",
@@ -120,6 +129,9 @@ app.get("/", (req, res) => {
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "UP",
+    clientIp: req.ip,
+    forwardedFor: req.headers["x-forwarded-for"],
+    cfConnectingIp: req.headers["cf-connecting-ip"],
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
     environment: process.env.NODE_ENV || "production",
