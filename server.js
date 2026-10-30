@@ -227,7 +227,7 @@ app.post("/auth/register", (req, res) => {
 
 app.get("/auth/verify", (req, res) => {
   const authHeader = req.headers.authorization || "";
-  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+  const token = authHeader.replace(/^(Bearer\s+)+/i, "").trim();
 
   if (!token || !token.startsWith("mock-jwt-token.")) {
     return res.status(401).json({
