@@ -1,7 +1,11 @@
 const express = require('express');
-const app = express();
+const rateLimit = require('express-rate-limit');
 
+const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Configuração para proxies reversos (Render / Vercel)
+app.set('trust proxy', 1);
 
 app.use(express.json());
 
@@ -14,7 +18,25 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check do Render
+// ── Rate Limiter Global ──────────────────────────────────────────
+// Máximo de 50 requisições por janela de 1 minuto por IP
+const qaRateLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minuto
+  max: 50, // Máximo de 50 requisições por IP na janela
+  standardHeaders: true, // Inclui headers padrão RateLimit-* (Draft RFC 6585)
+  legacyHeaders: false, // Desabilita headers legados X-RateLimit-*
+  statusCode: 429,
+  message: {
+    status: 429,
+    error: "Too Many Requests",
+    message: "⚠️ Limite de requisições do laboratório de QA atingido (máximo de 50 req/min por IP). Por favor, aguarde 1 minuto antes de enviar novos testes."
+  }
+});
+
+// Aplica o Rate Limiting a todas as rotas da API
+app.use(qaRateLimiter);
+
+// Health check do Render (não consome cota pesada)
 app.get('/health', (req, res) => {
   res.json({ status: "ok", service: "qa-lab-api", timestamp: new Date().toISOString() });
 });
@@ -73,5 +95,5 @@ app.get('/automation/users', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+  console.log(`🚀 Servidor rodando na porta ${PORT} com Rate Limit ativo (50 req/min)`);
 });
