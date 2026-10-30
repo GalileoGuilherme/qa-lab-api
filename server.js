@@ -12,7 +12,7 @@
 import express from "express";
 import cors from "cors";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
-import { getStore } from "./_data.js";
+import { getStore, registerUser, findUserByCredentials, updateUserPassword, getPersistentUsers } from "./_data.js";
 
 const app = express();
 
@@ -120,8 +120,13 @@ app.get("/", (req, res) => {
       "/cart/:id",
       "/coupons/validate",
       "/shipping/calculate",
+      "/auth/verify",
+      "/users/me/password",
+      "/products/categories",
+      "/cart/clear",
       "/orders",
-      "/orders/:id"
+      "/orders/:id",
+      "/orders/:id/status"
     ]
   });
 });
@@ -151,22 +156,7 @@ app.post("/auth/login", (req, res) => {
     });
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
-  const store = getStore();
-  store.registeredUsers = store.registeredUsers || [];
-
-  let foundUser = store.registeredUsers.find(
-    (u) => u.email.toLowerCase().trim() === normalizedEmail && u.password === password
-  );
-
-  if (!foundUser && normalizedEmail === "qa@exemplo.com" && (password === "123456" || password === "LabQA!Run-7kV2pX9m")) {
-    foundUser = {
-      id: "user-qa-01",
-      email: "qa@exemplo.com",
-      name: "Galileo Guilherme (QA Demo)",
-      role: "QA Engineer"
-    };
-  }
+  const foundUser = findUserByCredentials(email, password);
 
   if (!foundUser) {
     return res.status(401).json({
@@ -205,39 +195,66 @@ app.post("/auth/register", (req, res) => {
     });
   }
 
-  const normalizedEmail = email.toLowerCase().trim();
-  const store = getStore();
-  store.registeredUsers = store.registeredUsers || [];
+  const newUser = {
+    id: `user-${Date.now()}`,
+    name,
+    email: email.toLowerCase().trim(),
+    password,
+    role: "Tester / Student",
+    createdAt: new Date().toISOString()
+  };
 
-  if (store.registeredUsers.some((u) => u.email.toLowerCase().trim() === normalizedEmail) || normalizedEmail === "qa@exemplo.com") {
+  const created = registerUser(newUser);
+  if (!created) {
     return res.status(409).json({
       success: false,
       error: "Já existe um usuário de teste cadastrado com este e-mail."
     });
   }
 
-  const newUser = {
-    id: `user-${Date.now()}`,
-    name,
-    email: normalizedEmail,
-    password,
-    role: "Tester / Student",
-    createdAt: new Date().toISOString()
-  };
-
-  store.registeredUsers.push(newUser);
-
   return res.status(201).json({
     success: true,
     message: "Usuário registrado com sucesso.",
     user: {
-      id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      createdAt: newUser.createdAt
+      id: created.id,
+      name: created.name,
+      email: created.email,
+      role: created.role,
+      createdAt: created.createdAt
     }
   });
+});
+
+app.get("/auth/verify", (req, res) => {
+  const authHeader = req.headers.authorization || "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+
+  if (!token || !token.startsWith("mock-jwt-token.")) {
+    return res.status(401).json({
+      valid: false,
+      error: "Token não fornecido ou formato inválido. Utilize o formato: Bearer mock-jwt-token.<payload>.<timestamp>"
+    });
+  }
+
+  try {
+    const parts = token.split(".");
+    const payload = JSON.parse(Buffer.from(parts[1], "base64").toString("utf-8"));
+    return res.status(200).json({
+      valid: true,
+      message: "Token de sessão válido e ativo.",
+      session: {
+        userId: payload.sub,
+        email: payload.email,
+        role: payload.role || "QA Engineer",
+        issuedAt: parts[2] ? new Date(Number(parts[2])).toISOString() : new Date().toISOString()
+      }
+    });
+  } catch {
+    return res.status(401).json({
+      valid: false,
+      error: "Estrutura do token corrompida ou ilegível."
+    });
+  }
 });
 
 app.post("/auth/logout", (req, res) => {
@@ -273,10 +290,53 @@ app.put("/users/me", (req, res) => {
   });
 });
 
+app.patch("/users/me/password", (req, res) => {
+  const { email, currentPassword, newPassword } = req.body || {};
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({
+      success: false,
+      error: "A nova senha deve possuir no mínimo 6 caracteres."
+    });
+  }
+
+  const targetEmail = email || "qa@exemplo.com";
+  const user = findUserByCredentials(targetEmail, currentPassword);
+
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      error: "Senha atual incorreta ou usuário não encontrado."
+    });
+  }
+
+  const updated = updateUserPassword(targetEmail, newPassword);
+  if (!updated) {
+    return res.status(500).json({
+      success: false,
+      error: "Falha ao persistir a nova senha."
+    });
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: "Senha atualizada com sucesso no arquivo persistente."
+  });
+});
+
 app.get("/users", (req, res) => {
   const store = getStore();
-  const usersList = [
+  const persistentUsers = getPersistentUsers().map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role || "Tester / Student",
+    status: "active"
+  }));
+
+  const combined = [
     store.user,
+    ...persistentUsers.filter((u) => u.email !== store.user.email),
     {
       id: "usr-02",
       name: "Maria QA",
@@ -295,8 +355,8 @@ app.get("/users", (req, res) => {
 
   return res.status(200).json({
     success: true,
-    total: usersList.length,
-    users: usersList
+    total: combined.length,
+    users: combined
   });
 });
 
@@ -345,6 +405,16 @@ app.get("/products/search", (req, res) => {
     query,
     total: results.length,
     products: results
+  });
+});
+
+app.get("/products/categories", (req, res) => {
+  const store = getStore();
+  const categories = [...new Set(store.products.map((p) => p.category))];
+  return res.status(200).json({
+    success: true,
+    total: categories.length,
+    categories
   });
 });
 
@@ -586,6 +656,18 @@ app.delete("/cart", (req, res) => {
   });
 });
 
+app.post("/cart/clear", (req, res) => {
+  const store = getStore();
+  store.cart = [];
+  return res.status(200).json({
+    success: true,
+    message: "Carrinho esvaziado com sucesso.",
+    items: [],
+    total: 0,
+    count: 0
+  });
+});
+
 // ── 10. Validação de Cupons (/coupons/validate) ───────────────
 app.post("/coupons/validate", (req, res) => {
   const { code } = req.body || {};
@@ -737,6 +819,60 @@ app.post("/orders", (req, res) => {
     success: true,
     message: "Pedido realizado com sucesso!",
     order: newOrder
+  });
+});
+
+app.patch("/orders/:id/status", (req, res) => {
+  const store = getStore();
+  const { id } = req.params;
+  const { status } = req.body || {};
+  const validStatuses = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+
+  if (!status || !validStatuses.includes(status.toUpperCase())) {
+    return res.status(400).json({
+      success: false,
+      error: `Status inválido. Valores aceitos: ${validStatuses.join(", ")}.`
+    });
+  }
+
+  const order = store.orders.find((o) => o.id === id);
+  if (!order) {
+    return res.status(404).json({
+      success: false,
+      error: `Pedido "${id}" não encontrado.`
+    });
+  }
+
+  order.status = status.toUpperCase();
+  order.updatedAt = new Date().toISOString();
+
+  return res.status(200).json({
+    success: true,
+    message: `Status do pedido "${id}" atualizado para ${order.status}.`,
+    order
+  });
+});
+
+app.delete("/orders/:id", (req, res) => {
+  const store = getStore();
+  const { id } = req.params;
+  const index = store.orders.findIndex((o) => o.id === id);
+
+  if (index === -1) {
+    return res.status(404).json({
+      success: false,
+      error: `Pedido "${id}" não encontrado para cancelamento.`
+    });
+  }
+
+  const [removed] = store.orders.splice(index, 1);
+  removed.status = "CANCELLED";
+  removed.cancelledAt = new Date().toISOString();
+
+  return res.status(200).json({
+    success: true,
+    message: `Pedido "${id}" cancelado com sucesso.`,
+    order: removed
   });
 });
 

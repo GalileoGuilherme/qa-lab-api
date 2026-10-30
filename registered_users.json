@@ -1,0 +1,10 @@
+[
+  {
+    "id": "user-qa-01",
+    "name": "Galileo Guilherme (QA Demo)",
+    "email": "qa@exemplo.com",
+    "password": "123456",
+    "role": "QA Engineer",
+    "createdAt": "2026-01-01T00:00:00.000Z"
+  }
+]
