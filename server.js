@@ -59,6 +59,15 @@ const qaRateLimiter = rateLimit({
 
 app.use(qaRateLimiter);
 
+// ── 3.1. Normalização de Rotas (garante rotas diretas sem /api) ─
+// Redireciona internamente caso algum cliente antigo envie /api/...
+app.use((req, res, next) => {
+  if (req.url.startsWith("/api/")) {
+    req.url = req.url.replace(/^\/api/, "");
+  }
+  next();
+});
+
 // ── 4. Constantes e Funções Auxiliares ───────────────────────
 const VALID_COUPONS = {
   CYPRESS10: {
@@ -78,7 +87,33 @@ const VALID_COUPONS = {
 const calcCartTotal = (items) =>
   Number(items.reduce((acc, item) => acc + item.price * item.quantity, 0).toFixed(2));
 
-// ── 5. Rota de Health Check ──────────────────────────────────
+// ── 5. Rota Raiz & Health Check ──────────────────────────────
+app.get("/", (req, res) => {
+  res.status(200).json({
+    name: "QA Automation Lab Backend API",
+    status: "online",
+    version: "1.0.0",
+    docs: "Endpoints disponíveis diretamente na raiz (sem prefixo /api)",
+    endpoints: [
+      "/health",
+      "/auth/login",
+      "/auth/register",
+      "/auth/logout",
+      "/users",
+      "/users/me",
+      "/products",
+      "/products/search",
+      "/products/:id",
+      "/cart",
+      "/cart/:id",
+      "/coupons/validate",
+      "/shipping/calculate",
+      "/orders",
+      "/orders/:id"
+    ]
+  });
+});
+
 app.get("/health", (req, res) => {
   res.status(200).json({
     status: "UP",
