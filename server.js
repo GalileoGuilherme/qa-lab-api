@@ -17,8 +17,9 @@ import { getStore } from "./_data.js";
 const app = express();
 
 // ── 1. Configuração para Proxy Reverso (Render / Cloudflare) ─
-// Permite que o Express identifique os IPs reais dos clientes através dos cabeçalhos X-Forwarded-* do Render
-app.set('trust proxy', 1);
+// No Render, a requisição passa pelo Cloudflare e pelo proxy do Render.
+// 'trust proxy': true garante que req.ip obtenha o IP público real do cliente a partir do X-Forwarded-For.
+app.set('trust proxy', true);
 
 // ── 2. Middlewares Globais ───────────────────────────────────
 app.use(
