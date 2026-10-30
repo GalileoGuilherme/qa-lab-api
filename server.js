@@ -43,8 +43,8 @@ app.use((err, req, res, next) => {
   next();
 });
 
-// ── 3. Rate Limiter de Proteção (50 req/min por IP) ──────────
-const qaRateLimiter = rateLimit({
+// ── 3. Rate Limiter Global de Proteção (50 req/min por IP) ───
+const globalLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // Janela de 1 minuto
   max: 50, // Limite de 50 requisições por IP
   standardHeaders: true, // Retorna os cabeçalhos RateLimit-* (RFC)
@@ -54,11 +54,12 @@ const qaRateLimiter = rateLimit({
     status: 429,
     error: "Too Many Requests",
     message:
-      "Aviso: Este é um ambiente de laboratório para estudos e demonstração. A infraestrutura atual não está preparada para testes de carga, stress ou picos de acesso. Por favor, não realize este tipo de teste."
+      "Aviso: Este é um ambiente de laboratório para estudos e demonstração. A infraestrutura atual (Render Free Tier) não está preparada para testes de carga, stress ou picos de acesso. Por favor, não realize este tipo de teste."
   }
 });
 
-app.use(qaRateLimiter);
+// Aplica o rate limiter globalmente a todas as URLs antes de qualquer rota
+app.use(globalLimiter);
 
 // ── 3.1. Normalização de Rotas (garante rotas diretas sem /api) ─
 // Redireciona internamente caso algum cliente antigo envie /api/...
