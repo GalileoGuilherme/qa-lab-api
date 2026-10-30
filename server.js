@@ -29,7 +29,7 @@ const qaRateLimiter = rateLimit({
   message: {
     status: 429,
     error: "Too Many Requests",
-    message: "⚠️ Limite de requisições do laboratório de QA atingido (máximo de 50 req/min por IP). Por favor, aguarde 1 minuto antes de enviar novos testes."
+    message: "Aviso: Este é um ambiente de laboratório para estudos e demonstração. A infraestrutura atual  não está preparada para testes de carga, stress ou picos de acesso. Por favor, não realize este tipo de teste."
   }
 });
 
