@@ -1,9 +1,8 @@
 /**
  * server.js — QA Automation Lab Backend (Render)
  * ─────────────────────────────────────────────────────────────
- * Backend Express.js nativo para o laboratório de automação de testes.
- * Suporta testes de API (Swagger, Bruno, Cypress, Playwright).
- * Inclui Rate Limiting, CORS aberto, Mock State e tratamento 404.
+ * Servidor Express.js com rotas diretas na raiz do recurso,
+ * CORS aberto, Rate Limiting (50 req/min) e mock em memória.
  * ─────────────────────────────────────────────────────────────
  */
 
@@ -13,7 +12,6 @@ import rateLimit from "express-rate-limit";
 import { getStore } from "./_data.js";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
 
 // Configuração para proxies reversos (Render / Vercel / Cloudflare)
 app.set("trust proxy", 1);
@@ -50,7 +48,7 @@ const VALID_COUPONS = {
 };
 
 // ── 1. Monitoramento (Health Check) ──────────────────────────
-app.get(["/health", "/api/health"], (req, res) => {
+app.get("/health", (req, res) => {
   res.status(200).json({
     status: "UP",
     timestamp: new Date().toISOString(),
@@ -62,7 +60,7 @@ app.get(["/health", "/api/health"], (req, res) => {
 });
 
 // ── 2. Autenticação & Sessão ─────────────────────────────────
-app.post(["/auth/login", "/api/auth/login"], (req, res) => {
+app.post("/auth/login", (req, res) => {
   const { email, password } = req.body || {};
 
   if (!email || !password) {
@@ -96,14 +94,14 @@ app.post(["/auth/login", "/api/auth/login"], (req, res) => {
   });
 });
 
-app.post(["/auth/logout", "/api/auth/logout"], (req, res) => {
+app.post("/auth/logout", (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Sessão invalidada com sucesso. Token revogado."
   });
 });
 
-app.post(["/auth/register", "/api/auth/register"], (req, res) => {
+app.post("/auth/register", (req, res) => {
   const { name, email, password } = req.body || {};
 
   if (!name || !email || !password) {
@@ -127,12 +125,12 @@ app.post(["/auth/register", "/api/auth/register"], (req, res) => {
 });
 
 // ── 3. Usuários ──────────────────────────────────────────────
-app.get(["/users/me", "/api/users/me"], (req, res) => {
+app.get("/users/me", (req, res) => {
   const store = getStore();
   return res.status(200).json({ success: true, user: store.user });
 });
 
-app.put(["/users/me", "/api/users/me"], (req, res) => {
+app.put("/users/me", (req, res) => {
   const store = getStore();
   const updates = req.body || {};
   store.user = { ...store.user, ...updates, updatedAt: new Date().toISOString() };
@@ -143,7 +141,7 @@ app.put(["/users/me", "/api/users/me"], (req, res) => {
   });
 });
 
-app.get(["/users", "/api/users"], (req, res) => {
+app.get("/users", (req, res) => {
   const mockUsers = [
     { id: "usr-1", name: "Galileo Guilherme", email: "qa@exemplo.com", role: "QA Lead", status: "active" },
     { id: "usr-2", name: "Maria QA", email: "maria.qa@exemplo.com", role: "QA Analyst", status: "active" },
@@ -153,7 +151,7 @@ app.get(["/users", "/api/users"], (req, res) => {
 });
 
 // ── 4. Catálogo de Produtos ──────────────────────────────────
-app.get(["/products/search", "/api/products/search"], (req, res) => {
+app.get("/products/search", (req, res) => {
   const store = getStore();
   const q = (req.query?.q || "").trim().toLowerCase();
 
@@ -174,7 +172,7 @@ app.get(["/products/search", "/api/products/search"], (req, res) => {
   });
 });
 
-app.get(["/products/:id", "/api/products/:id"], (req, res) => {
+app.get("/products/:id", (req, res) => {
   const store = getStore();
   const { id } = req.params;
   const product = store.products.find((p) => p.id === id);
@@ -186,7 +184,7 @@ app.get(["/products/:id", "/api/products/:id"], (req, res) => {
   return res.status(200).json({ success: true, product });
 });
 
-app.delete(["/products/:id", "/api/products/:id"], (req, res) => {
+app.delete("/products/:id", (req, res) => {
   const store = getStore();
   const { id } = req.params;
   const idx = store.products.findIndex((p) => p.id === id);
@@ -202,7 +200,7 @@ app.delete(["/products/:id", "/api/products/:id"], (req, res) => {
   });
 });
 
-app.get(["/products", "/api/products"], (req, res) => {
+app.get("/products", (req, res) => {
   const store = getStore();
   const { category } = req.query || {};
   let list = store.products;
@@ -214,7 +212,7 @@ app.get(["/products", "/api/products"], (req, res) => {
   return res.status(200).json({ success: true, total: list.length, products: list });
 });
 
-app.post(["/products", "/api/products"], (req, res) => {
+app.post("/products", (req, res) => {
   const store = getStore();
   const { name, price, category, description, stock } = req.body || {};
 
@@ -242,7 +240,7 @@ app.post(["/products", "/api/products"], (req, res) => {
 });
 
 // ── 5. Carrinho de Compras ───────────────────────────────────
-app.get(["/cart", "/api/cart"], (req, res) => {
+app.get("/cart", (req, res) => {
   const store = getStore();
   return res.status(200).json({
     success: true,
@@ -252,7 +250,7 @@ app.get(["/cart", "/api/cart"], (req, res) => {
   });
 });
 
-app.post(["/cart", "/api/cart"], (req, res) => {
+app.post("/cart", (req, res) => {
   const store = getStore();
   const { productId, quantity = 1 } = req.body || {};
 
@@ -292,7 +290,7 @@ app.post(["/cart", "/api/cart"], (req, res) => {
   });
 });
 
-app.put(["/cart/:id", "/api/cart/:id"], (req, res) => {
+app.put("/cart/:id", (req, res) => {
   const store = getStore();
   const { id } = req.params;
   const itemIndex = store.cart.findIndex((i) => i.id === id || i.productId === id);
@@ -326,7 +324,7 @@ app.put(["/cart/:id", "/api/cart/:id"], (req, res) => {
   });
 });
 
-app.delete(["/cart/:id", "/api/cart/:id"], (req, res) => {
+app.delete("/cart/:id", (req, res) => {
   const store = getStore();
   const { id } = req.params;
   const itemIndex = store.cart.findIndex((i) => i.id === id || i.productId === id);
@@ -344,7 +342,7 @@ app.delete(["/cart/:id", "/api/cart/:id"], (req, res) => {
   });
 });
 
-app.delete(["/cart", "/api/cart"], (req, res) => {
+app.delete("/cart", (req, res) => {
   const store = getStore();
   store.cart = [];
   return res.status(200).json({
@@ -357,7 +355,7 @@ app.delete(["/cart", "/api/cart"], (req, res) => {
 });
 
 // ── 6. Cupons & Frete ────────────────────────────────────────
-app.post(["/coupons/validate", "/api/coupons/validate"], (req, res) => {
+app.post("/coupons/validate", (req, res) => {
   const { code } = req.body || {};
 
   if (!code || typeof code !== "string") {
@@ -383,7 +381,7 @@ app.post(["/coupons/validate", "/api/coupons/validate"], (req, res) => {
   });
 });
 
-app.post(["/shipping/calculate", "/api/shipping/calculate"], (req, res) => {
+app.post("/shipping/calculate", (req, res) => {
   const { cep } = req.body || {};
 
   if (!cep) {
@@ -410,7 +408,7 @@ app.post(["/shipping/calculate", "/api/shipping/calculate"], (req, res) => {
 });
 
 // ── 7. Pedidos (Checkout) ────────────────────────────────────
-app.get(["/orders/:id", "/api/orders/:id"], (req, res) => {
+app.get("/orders/:id", (req, res) => {
   const store = getStore();
   const { id } = req.params;
   const order = store.orders.find((o) => o.id === id);
@@ -422,12 +420,12 @@ app.get(["/orders/:id", "/api/orders/:id"], (req, res) => {
   return res.status(200).json({ success: true, order });
 });
 
-app.get(["/orders", "/api/orders"], (req, res) => {
+app.get("/orders", (req, res) => {
   const store = getStore();
   return res.status(200).json({ success: true, total: store.orders.length, orders: store.orders });
 });
 
-app.post(["/orders", "/api/orders"], (req, res) => {
+app.post("/orders", (req, res) => {
   const store = getStore();
   const {
     items,
@@ -487,8 +485,7 @@ app.use((req, res) => {
 });
 
 // ── Inicialização do Servidor ────────────────────────────────
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 QA Lab Render Backend rodando na porta ${PORT}`);
+  console.log(`Servidor a correr na porta ${PORT}`);
 });
-
-export default app;
